@@ -1,0 +1,42 @@
+import matplotlib.pyplot as plt
+from tensorflow.keras.datasets import imdb
+from tensorflow.keras.utils import pad_sequences, to_categorical
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Embedding, SimpleRNN, Dense
+
+# Load built-in IMDB dataset (positive / negative reviews)
+(x_train, y_train), (x_test, y_test) = imdb.load_data(num_words=20000)
+
+# Pad sequences
+x_train = pad_sequences(x_train, maxlen=35, padding='post')
+x_test  = pad_sequences(x_test,  maxlen=35, padding='post')
+
+# One-hot encode labels
+y_train = to_categorical(y_train, 2)
+y_test  = to_categorical(y_test,  2)
+
+# Build & Train Model
+model = Sequential([
+    Embedding(20000, 5, input_length=35),
+    SimpleRNN(32), #SimpleRNN(32, dropout=0.2)
+    Dense(2, activation='softmax')
+])
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+history = model.fit(x_train, y_train, epochs=5, validation_data=(x_test, y_test))
+
+# Plot Accuracy
+plt.plot(history.history['accuracy'],     label='Train')
+plt.plot(history.history['val_accuracy'], label='Val')
+plt.legend(); plt.show()
+
+# Predict Function (IMDB word index is offset by 3)
+word_index = imdb.get_word_index()
+labels = ['Negative', 'Positive']
+
+def predict(text):
+    seq = [[word_index.get(w, 0) + 3 for w in text.lower().split()]]
+    seq = pad_sequences(seq, maxlen=35, padding='post')
+    print(labels[model.predict(seq).argmax()])
+
+predict("The movie was bad I will not recommend it")
+predict("The movie was good I will recommend it")

@@ -1,0 +1,39 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow import keras
+from tensorflow.keras import layers
+
+# Load & Preprocess
+(X, y), _ = keras.datasets.mnist.load_data()
+X = X.reshape(-1, 28, 28, 1) / 255.0
+y = keras.utils.to_categorical(y, 10)
+
+# Build Model
+inputs = keras.Input(shape=(28, 28, 1))
+x = layers.Conv2D(32, (3,3), activation='relu')(inputs)
+x = layers.MaxPooling2D()(x)
+x = layers.Conv2D(64, (3,3), activation='relu')(x)
+x = layers.MaxPooling2D()(x)
+x = layers.Flatten()(x)
+x = layers.Dense(64, activation='relu')(x)
+outputs = layers.Dense(10, activation='softmax')(x)
+model = keras.Model(inputs, outputs)
+
+# Compile & Train
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+model.fit(X, y, epochs=5, batch_size=32, validation_split=0.2)
+
+# Evaluate
+_, acc = model.evaluate(X, y)
+print(f"Accuracy: {acc:.4f}")
+
+# Visualize Filters
+conv_outputs = [l.output for l in model.layers if isinstance(l, layers.Conv2D)]
+act_model = keras.Model(inputs, conv_outputs)
+activations = act_model.predict(X[0].reshape(1, 28, 28, 1))
+
+fig, axes = plt.subplots(1, activations[0].shape[-1], figsize=(12, 6))
+for i, ax in enumerate(axes):
+    ax.imshow(activations[0][0, :, :, i], cmap='viridis')
+    ax.axis('off')
+plt.show()

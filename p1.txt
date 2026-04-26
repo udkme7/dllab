@@ -1,0 +1,30 @@
+import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+np.random.seed(0)
+tf.random.set_seed(0)
+
+X = np.array([[0,0],[0,1],[1,0],[1,1]])
+y = np.array([0,0,0,1])
+#or gate
+#y = np.array([0,1,1,1])
+
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(1, activation='sigmoid', input_shape=(2,))
+])
+
+model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.1),
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+model.fit(X, y, epochs=1000, verbose=0)
+
+print("Accuracy:", model.evaluate(X, y, verbose=0)[1])
+
+xx, yy = np.meshgrid(np.linspace(-1,2,100), np.linspace(-1,2,100))
+Z = model.predict(np.c_[xx.ravel(), yy.ravel()]).reshape(xx.shape)
+
+plt.contourf(xx, yy, Z > 0.5, alpha=0.7)
+plt.scatter(X[:,0], X[:,1], c=y, edgecolors='k')
+plt.show()

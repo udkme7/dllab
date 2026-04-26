@@ -1,0 +1,69 @@
+#!pip install kagglehub pandas numpy matplotlib scikit-learn tensorflow
+import os, kagglehub, pandas as pd, matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Input
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
+
+# 1. Download & Load Dataset
+# 1. Download & Load Dataset
+path = kagglehub.dataset_download("sayeeduddin/netflix-2025user-behavior-dataset-210k-records")
+
+# THE FIX: Explicitly target "users.csv" instead of grabbing a random file
+csv_path = os.path.join(path, "users.csv") 
+
+# Load it and safely drop any identifiers if they exist
+df = pd.read_csv(csv_path).drop(columns=['user_id', 'email', 'first_name', 'last_name'], errors='ignore')
+# 2. Preprocessing
+target_col = 'is_active'
+df.fillna(df.median(numeric_only=True), inplace=True) # Impute numerics
+df.fillna(df.mode().iloc[0], inplace=True)            # Impute categoricals
+
+X, y = pd.get_dummies(df.drop(columns=[target_col]), drop_first=True), df[target_col]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+X_train = StandardScaler().fit_transform(X_train)
+X_test = StandardScaler().fit_transform(X_test)
+
+# 3. Experimentation Loop
+experiments = [
+    {"d": 1, "act": "relu", "lr": 0.001, "bs": 32},  # Baseline
+    {"d": 3, "act": "relu", "lr": 0.001, "bs": 32},  # Deeper
+    {"d": 1, "act": "tanh", "lr": 0.001, "bs": 32},  # Tanh Act
+    {"d": 1, "act": "relu", "lr": 0.01,  "bs": 32},  # High LR
+    {"d": 1, "act": "relu", "lr": 0.001, "bs": 128}, # Large Batch
+]
+
+results = {}
+cb = [EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)]
+
+print("\nStarting Hyperparameter Evaluation...")
+for exp in experiments:
+    name = f"D{exp['d']}_{exp['act']}_LR{exp['lr']}_B{exp['bs']}"
+    print(f"Training: {name}...")
+    
+    # Build & Compile Model
+    model = Sequential([Input(shape=(X_train.shape[1],))] + 
+                       [Dense(64, activation=exp['act']) for _ in range(exp['d'])] + 
+                       [Dense(1, activation='sigmoid')])
+    model.compile(optimizer=Adam(learning_rate=exp['lr']), loss='binary_crossentropy', metrics=['accuracy'])
+    
+    # Train & Evaluate
+    hist = model.fit(X_train, y_train, epochs=15, batch_size=exp['bs'], validation_split=0.2, callbacks=cb, verbose=0)
+    results[name] = {"history": hist.history, "test": model.evaluate(X_test, y_test, verbose=0)}
+
+# 4. Results & Visualization
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+print("\n=== Final Test Set Accuracies ===")
+
+for name, res in results.items():
+    ax1.plot(res["history"]["loss"], label=name)
+    ax2.plot(res["history"]["val_accuracy"], label=name)
+    print(f"{name}: Acc = {res['test'][1]:.4f}, Loss = {res['test'][0]:.4f}")
+
+ax1.set(title="Training Loss", xlabel="Epochs", ylabel="Loss"); ax1.legend()
+ax2.set(title="Validation Accuracy", xlabel="Epochs", ylabel="Accuracy"); ax2.legend()
+plt.tight_layout()
+plt.show()

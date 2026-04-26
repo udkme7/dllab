@@ -1,0 +1,55 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Flatten, Dense
+
+# ─── DATASET LOADING — USE ONE OF THE TWO OPTIONS BELOW ───
+
+# OPTION 1: Online (internet required) — comment this out if offline
+data_dir = tf.keras.utils.get_file('flower_photos',
+    origin="https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz",
+    untar=True)
+data_dir = data_dir + "/flower_photos"  # ← fix: extracted folder is nested one level deep
+
+# OPTION 2: Offline (if ma'am gives the folder) — uncomment this line & comment OPTION 1
+# data_dir = "./flower_photos"   # <-- change path to wherever the folder is
+
+# ──────────────────────────────────────────────────────────
+
+# Load as dataset
+train_ds = tf.keras.utils.image_dataset_from_directory(data_dir, validation_split=0.3,
+            subset='training',   seed=42, image_size=(224,224), batch_size=32)
+val_ds   = tf.keras.utils.image_dataset_from_directory(data_dir, validation_split=0.3,
+            subset='validation', seed=42, image_size=(224,224), batch_size=32)
+
+flower_names = train_ds.class_names
+print("Classes found:", flower_names)
+
+# Normalize & one-hot encode
+train_ds = train_ds.map(lambda x, y: (x/255.0, tf.one_hot(y, 5)))
+val_ds   = val_ds.map(lambda x, y:   (x/255.0, tf.one_hot(y, 5)))
+
+# Build Model
+vgg = VGG16(include_top=False, weights='imagenet', input_shape=(224,224,3))
+vgg.trainable = False
+
+model = Sequential([vgg, Flatten(), Dense(512, activation='relu'), Dense(5, activation='softmax')])
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.fit(train_ds, epochs=1, validation_data=val_ds)
+
+# Evaluate
+loss, acc = model.evaluate(val_ds)
+print(f"Loss: {loss:.4f}  Accuracy: {acc:.4f}")
+
+# Visualize Predictions
+images, labels = next(iter(val_ds))
+preds = model.predict(images[:5]).argmax(axis=1)
+
+plt.figure(figsize=(12, 6))
+for i in range(5):
+    plt.subplot(1, 5, i+1)
+    plt.imshow(images[i]); plt.axis('off')
+    plt.title(f"True: {flower_names[labels[i].numpy().argmax()]}\nPred: {flower_names[preds[i]]}")
+plt.show()

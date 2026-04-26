@@ -1,0 +1,40 @@
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+# Load MNIST
+(X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
+
+# FIX: ensure correct dtype
+X_train = X_train.astype('float32') / 255.0
+X_test = X_test.astype('float32') / 255.0
+
+# Model function
+def build_model(act):
+    return tf.keras.Sequential([
+        tf.keras.layers.Flatten(input_shape=(28,28)),
+        tf.keras.layers.Dense(128, activation=act),
+        tf.keras.layers.Dense(10, activation='softmax')
+    ])
+
+activations = ['sigmoid', 'relu', 'tanh']
+history = {}
+
+# Train
+for act in activations:
+    model = build_model(act)
+    model.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    history[act] = model.fit(X_train, y_train, epochs=5,
+                            validation_data=(X_test, y_test), verbose=0)
+
+# Plot
+for act in activations:
+    acc = history[act].history['val_accuracy'][-1]
+    plt.plot(history[act].history['val_accuracy'], label=f"{act} ({acc:.4f})")
+
+plt.legend()
+plt.title("Activation Comparison")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.show()

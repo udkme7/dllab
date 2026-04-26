@@ -1,0 +1,48 @@
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+# Load CIFAR-10
+(X_train, y_train), (X_test, y_test) = tf.keras.datasets.cifar10.load_data()
+
+# Normalize
+X_train, X_test = X_train/255.0, X_test/255.0
+
+# Model
+def build_model():
+    return tf.keras.Sequential([
+        tf.keras.layers.Flatten(input_shape=(32,32,3)),
+        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.Dense(10, activation='softmax')
+    ])
+
+optimizers = {
+    'SGD': tf.keras.optimizers.SGD(),
+    'Adam': tf.keras.optimizers.Adam(),
+    'RMSprop': tf.keras.optimizers.RMSprop()
+}
+
+history = {}
+
+# Train models
+for name, opt in optimizers.items():
+    model = build_model()
+    model.compile(optimizer=opt,
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+
+    history[name] = model.fit(X_train, y_train,
+                              epochs=5,
+                              validation_data=(X_test, y_test),
+                              verbose=0)
+
+# Plot comparison
+for name in optimizers:
+    acc = history[name].history['val_accuracy'][-1]
+    plt.plot(history[name].history['val_accuracy'],
+             label=f"{name} ({acc:.4f})")
+
+plt.title("Optimizer Comparison")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.show()
