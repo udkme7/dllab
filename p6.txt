@@ -31,13 +31,18 @@ _, acc = model.evaluate(X, y)
 print(f"Accuracy: {acc:.4f}")
 
 # Visualize first Conv layer activations
-act_model = Model(inputs=model.inputs, outputs=model.layers[0].output)
-activations = act_model.predict(X[:1])
+for l in model.layers:
+    if isinstance(l, Conv2D):
+        act_model = Model(inputs=model.inputs, outputs=model.layers[0].output)
+        activations = act_model.predict(X[:1])
 
-fig, axes = plt.subplots(4, 8, figsize=(8,4))
-for i, ax in enumerate(axes.flat):
-    ax.imshow(activations[0, :, :, i], cmap='viridis')
-    ax.axis('off')
+        fig, axes = plt.subplots(4, 8, figsize=(8,4))
+        for i, ax in enumerate(axes.flat):
+            ax.imshow(activations[0, :, :, i], cmap='viridis')
+            ax.axis('off')
+        plt.suptitle(l.name)
+        plt.tight_layout()
+        plt.show()
+    else:
+        continue
 
-plt.tight_layout()
-plt.show()
