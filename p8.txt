@@ -53,3 +53,58 @@ for i in range(5):
     plt.imshow(images[i]); plt.axis('off')
     plt.title(f"True: {flower_names[labels[i].numpy().argmax()]}\nPred: {flower_names[preds[i]]}")
 plt.show()
+
+
+
+
+#-------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------------------------------
+#_______________________________________________________________________________________________________________________________
+#_______________________________________________________________________________________________________________________________
+#-------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+import tensorflow as tf
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.models import Model
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Load CIFAR10
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+x_train, x_test = x_train / 255.0, x_test / 255.0
+y_train, y_test = y_train.flatten(), y_test.flatten()
+
+# Load pre-trained VGG16
+base = VGG16(input_shape=(32, 32, 3), include_top=False, weights='imagenet')
+base.trainable = False
+x = Flatten()(base.output)
+x = Dense(10, activation='softmax')(x)
+model = Model(base.input, x)
+
+# Compile and train
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+history = model.fit(x_train[:5000], y_train[:5000], epochs=10, validation_split=0.2)
+loss, acc = model.evaluate(x_test[:1000], y_test[:1000], verbose=0)
+print(f"Test Loss: {loss:.4f}, Test Accuracy: {acc:.4f}")
+
+# Predict on first 5 test samples
+preds = model.predict(x_test[:5], verbose=0)
+pred_labels = np.argmax(preds, axis=1)
+
+# Simple visualization - 5 images
+class_names = ['airplane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+plt.figure(figsize=(15, 3))
+
+for i in range(5):
+    plt.subplot(1, 5, i+1)
+    plt.imshow(x_test[i])
+    plt.title(f'{class_names[y_test[i]]} → {class_names[pred_labels[i]]}', fontsize=9)
+    plt.axis('off')
+
+plt.tight_layout()
+plt.show()
