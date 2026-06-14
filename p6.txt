@@ -31,7 +31,7 @@ _, acc = model.evaluate(X, y)
 print(f"Accuracy: {acc:.4f}")
 
 # Visualize first Conv layer activations
-act_model = Model(inputs=model.input, outputs=model.layers[0].output)
+act_model = Model(inputs=model.inputs, outputs=model.layers[0].output)
 activations = act_model.predict(X[:1])
 
 fig, axes = plt.subplots(4, 8, figsize=(8,4))
