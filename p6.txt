@@ -1,39 +1,43 @@
-import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow import keras
-from tensorflow.keras import layers
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import Model
 
-# Load & Preprocess
-(X, y), _ = keras.datasets.mnist.load_data()
+# Load data
+(X, y), _ = mnist.load_data()
 X = X.reshape(-1, 28, 28, 1) / 255.0
-y = keras.utils.to_categorical(y, 10)
+y = to_categorical(y, 10)
 
-# Build Model
-inputs = keras.Input(shape=(28, 28, 1))
-x = layers.Conv2D(32, (3,3), activation='relu')(inputs)
-x = layers.MaxPooling2D()(x)
-x = layers.Conv2D(64, (3,3), activation='relu')(x)
-x = layers.MaxPooling2D()(x)
-x = layers.Flatten()(x)
-x = layers.Dense(64, activation='relu')(x)
-outputs = layers.Dense(10, activation='softmax')(x)
-model = keras.Model(inputs, outputs)
+# Build model
+model = Sequential([
+    Conv2D(32, (3,3), activation='relu', input_shape=(28,28,1)),
+    MaxPooling2D(),
+    Conv2D(64, (3,3), activation='relu'),
+    MaxPooling2D(),
+    Flatten(),
+    Dense(64, activation='relu'),
+    Dense(10, activation='softmax')
+])
 
-# Compile & Train
+# Train
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
 model.fit(X, y, epochs=5, batch_size=32, validation_split=0.2)
 
 # Evaluate
 _, acc = model.evaluate(X, y)
 print(f"Accuracy: {acc:.4f}")
 
-# Visualize Filters
-conv_outputs = [l.output for l in model.layers if isinstance(l, layers.Conv2D)]
-act_model = keras.Model(inputs, conv_outputs)
-activations = act_model.predict(X[0].reshape(1, 28, 28, 1))
+# Visualize first Conv layer activations
+act_model = Model(inputs=model.input, outputs=model.layers[0].output)
+activations = act_model.predict(X[:1])
 
-fig, axes = plt.subplots(1, activations[0].shape[-1], figsize=(12, 6))
-for i, ax in enumerate(axes):
-    ax.imshow(activations[0][0, :, :, i], cmap='viridis')
+fig, axes = plt.subplots(4, 8, figsize=(8,4))
+for i, ax in enumerate(axes.flat):
+    ax.imshow(activations[0, :, :, i], cmap='viridis')
     ax.axis('off')
+
+plt.tight_layout()
 plt.show()
